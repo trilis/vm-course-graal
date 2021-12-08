@@ -40,4 +40,4 @@
 # SOFTWARE.
 #
 
-[[ -f sl-component.jar ]] && rm sl-component.jar || echo "sl-component.jar not found"
+[[ -f lama-component.jar ]] && rm lama-component.jar || echo "lama-component.jar not found"

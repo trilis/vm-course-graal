@@ -43,10 +43,10 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>com.oracle</groupId>
-    <artifactId>simplelanguage-parent</artifactId>
+    <artifactId>lama-parent</artifactId>
     <version>${graalvm.version}</version>
   </parent>
-  <artifactId>simplelanguage-graalvm-native</artifactId>
+  <artifactId>lama-graalvm-native</artifactId>
   <packaging>pom</packaging>
   <build>
     <plugins>
