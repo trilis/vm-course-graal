@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,49 +40,49 @@
  */
 package com.oracle.truffle.lama.nodes.local;
 
-import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
-import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.lama.LamaException;
 import com.oracle.truffle.lama.nodes.LamaExpressionNode;
+import com.oracle.truffle.lama.runtime.LamaArrayRef;
+import com.oracle.truffle.lama.runtime.LamaStringRef;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 
-/**
- * Node to read a local variable from a function's {@link VirtualFrame frame}. The Truffle frame API
- * allows to store primitive values of all Java primitive types, and Object values. This means that
- * all SL types that are objects are handled by the {@link #readObject} method.
- * <p>
- * We use the primitive type only when the same primitive type is uses for all writes. If the local
- * variable is type-polymorphic, then the value is always stored as an Object, i.e., primitive
- * values are boxed. Even a mixture of {@code long} and {@code boolean} writes leads to both being
- * stored boxed.
- */
-@NodeField(name = "slot", type = FrameSlot.class)
-public abstract class SLReadNode extends LamaExpressionNode {
+@NodeInfo(shortName = "write")
+@NodeChild("referenceNode")
+@NodeChild("valueNode")
+public abstract class LamaWriteNode extends LamaExpressionNode {
 
-    protected abstract FrameSlot getSlot();
+    private @Child LamaWriteLocalNode helper;
 
-    @Specialization(rewriteOn = FrameSlotTypeException.class)
-    protected Object readObject(VirtualFrame frame) throws FrameSlotTypeException {
-        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Object);
-        Object value = frame.getObject(getSlot());
-        Frame currentFrame = frame;
-        while (value == null) {
-            currentFrame = (Frame) currentFrame.getArguments()[0];
-            value = currentFrame.getObject(getSlot());
-        }
+    public LamaWriteNode() {
+        helper = LamaWriteLocalNodeGen.create();
+    }
+
+    @Specialization
+    protected Object writeLocal(VirtualFrame frame, FrameSlot slot, Object value) {
+        return helper.executeWrite(frame, slot, value);
+    }
+
+    @Specialization
+    protected Object writeArray(LamaArrayRef ref, Object value) {
+        ref.write(value);
         return value;
     }
 
     @Specialization
-    protected Object error(VirtualFrame frame) {
-        throw LamaException.typeError(this, frame);
+    protected long writeString(LamaStringRef ref, long value) {
+        ref.write(value);
+        return value;
     }
 
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == ReadVariableTag.class || super.hasTag(tag);
+    @Fallback
+    protected Object typeError(Object ref, Object value) {
+        throw LamaException.typeError(this, value);
     }
+
 
 }

@@ -30,4 +30,9 @@ public class LamaNamedPatternNode extends LamaPatternNode {
             result.addBinding(slot, scrutinee);
         }
     }
+
+    @Override
+    public int getBindingsSize() {
+        return pattern.getBindingsSize() + 1;
+    }
 }

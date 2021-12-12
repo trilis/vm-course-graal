@@ -8,6 +8,8 @@ import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.lama.runtime.LamaPatternMatchingResult;
 import com.oracle.truffle.lama.runtime.LamaSexp;
 
+import java.util.Arrays;
+
 import static com.oracle.truffle.lama.runtime.LamaPatternMatchingResult.*;
 
 public abstract class LamaSexpPatternNode extends LamaPatternNode {
@@ -40,5 +42,10 @@ public abstract class LamaSexpPatternNode extends LamaPatternNode {
     @Fallback
     protected LamaPatternMatchingResult matchError(Object scrutinee) {
         return Fail();
+    }
+
+    @Override
+    public int getBindingsSize() {
+        return Arrays.stream(subpatterns).map(LamaPatternNode::getBindingsSize).reduce(0, Integer::sum);
     }
 }

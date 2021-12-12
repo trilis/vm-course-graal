@@ -52,6 +52,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.lama.nodes.LamaExpressionNode;
 import com.oracle.truffle.lama.runtime.LamaFunction;
+import com.oracle.truffle.lama.runtime.LamaInitializedFunction;
 
 @NodeInfo(shortName = "invoke")
 public final class LamaInvokeNode extends LamaExpressionNode {
@@ -70,11 +71,11 @@ public final class LamaInvokeNode extends LamaExpressionNode {
     @Override
     public Object executeGeneric(VirtualFrame frame) {
 
-        LamaFunction function = evaluateFunction(frame);
+        LamaInitializedFunction function = evaluateFunction(frame);
         CompilerAsserts.compilationConstant(argumentNodes.length);
 
         Object[] argumentValues = new Object[argumentNodes.length + 1];
-        argumentValues[0] = function.getLexicalScope();
+        argumentValues[0] = function.getFrame();
         for (int i = 0; i < argumentNodes.length; i++) {
             argumentValues[i + 1] = argumentNodes[i].executeGeneric(frame);
         }
@@ -82,7 +83,7 @@ public final class LamaInvokeNode extends LamaExpressionNode {
         return this.callNode.call(function.callTarget, argumentValues);
     }
 
-    private LamaFunction evaluateFunction(VirtualFrame frame) {
+    private LamaInitializedFunction evaluateFunction(VirtualFrame frame) {
         try {
             return functionNode.executeFunction(frame);
         } catch (UnexpectedResultException e) {

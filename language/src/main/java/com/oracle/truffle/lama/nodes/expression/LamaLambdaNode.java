@@ -7,14 +7,15 @@ import com.oracle.truffle.lama.nodes.LamaExpressionNode;
 import com.oracle.truffle.lama.runtime.LamaFunction;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 
-@NodeInfo(shortName = "function")
+@NodeInfo(shortName = "lambda")
 @NodeField(name = "function", type = LamaFunction.class)
-public abstract class LamaFunctionNode extends LamaExpressionNode {
+public abstract class LamaLambdaNode extends LamaExpressionNode {
     public abstract LamaFunction getFunction();
 
+    /* Lambdas are different from named functions, as they initialize their frames on creation */
     @Specialization
     public Object getLamaFunction(VirtualFrame virtualFrame) {
-        return this.getFunction();
+        return this.getFunction().initialize(virtualFrame);
     }
 
 }

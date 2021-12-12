@@ -85,7 +85,7 @@ public abstract class LamaExpressionNode extends LamaStatementNode {
         return LamaTypesGen.expectLong(executeGeneric(frame));
     }
 
-    public LamaFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
-        return LamaTypesGen.expectLamaFunction(executeGeneric(frame));
+    public LamaInitializedFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
+        return LamaTypesGen.expectLamaInitializedFunction(executeGeneric(frame));
     }
 }

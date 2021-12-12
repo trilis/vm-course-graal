@@ -3,10 +3,12 @@ package com.oracle.truffle.lama.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.lama.LamaException;
 import com.oracle.truffle.lama.runtime.LamaArray;
 import com.oracle.truffle.lama.runtime.LamaSexp;
 
+@NodeInfo(shortName = "string")
 public abstract class LamaStringBuiltin extends LamaBuiltinNode {
 
     @TruffleBoundary

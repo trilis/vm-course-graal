@@ -44,7 +44,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.lama.nodes.LamaExpressionNode;
 import com.oracle.truffle.lama.runtime.LamaNull;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 
+@NodeInfo(shortName = "readArg")
 public class LamaReadArgumentNode extends LamaExpressionNode {
 
     private final int index;

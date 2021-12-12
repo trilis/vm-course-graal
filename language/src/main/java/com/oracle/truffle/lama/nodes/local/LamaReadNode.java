@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,46 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.lama.nodes.controlflow;
+package com.oracle.truffle.lama.nodes.local;
 
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.lama.nodes.LamaExpressionNode;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 
-@NodeInfo(shortName = "whileRepeating")
-public final class LamaWhileRepeatingNode extends Node implements RepeatingNode {
+@NodeInfo(shortName = "read")
+@NodeField(name = "slot", type = FrameSlot.class)
+public abstract class LamaReadNode extends LamaExpressionNode {
 
-    @Child private LamaExpressionNode conditionNode;
+    protected abstract FrameSlot getSlot();
+    private @Child LamaReaderHelperNode helper;
 
-    @Child private LamaExpressionNode bodyNode;
+    public LamaReadNode(boolean isSkipFunctionInit) {
+        this.helper = LamaReaderHelperNodeGen.create(isSkipFunctionInit);
+    }
 
-    public LamaWhileRepeatingNode(LamaExpressionNode conditionNode, LamaExpressionNode bodyNode) {
-        this.conditionNode = conditionNode;
-        this.bodyNode = bodyNode;
+    @Specialization
+    protected Object readObject(VirtualFrame frame) {
+        return helper.executeRead(frame, getSlot());
     }
 
     @Override
-    public boolean executeRepeating(VirtualFrame frame) {
-        if (!evaluateCondition(frame)) {
-            return false;
-        }
-        bodyNode.executeVoid(frame);
-        return true;
-    }
-
-    private boolean evaluateCondition(VirtualFrame frame) {
-        try {
-            return conditionNode.executeLong(frame) != 0;
-        } catch (UnexpectedResultException ex) {
-            throw new UnsupportedSpecializationException(this, new Node[]{conditionNode}, ex.getResult());
-        }
-    }
-
-    @Override
-    public String toString() {
-        return LamaExpressionNode.formatSourceSection(this);
+    public boolean hasTag(Class<? extends Tag> tag) {
+        return tag == ReadVariableTag.class || super.hasTag(tag);
     }
 
 }

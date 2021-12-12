@@ -5,4 +5,7 @@ import com.oracle.truffle.lama.runtime.LamaPatternMatchingResult;
 
 public abstract class LamaPatternNode extends Node {
     public abstract LamaPatternMatchingResult executeScrutinee(Object scrutinee);
+    public int getBindingsSize() {
+        return 0;
+    }
 }

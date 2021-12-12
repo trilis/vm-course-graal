@@ -49,7 +49,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.lama.runtime.SLLanguageView;
 
 public class LamaException extends AbstractTruffleException {
 
@@ -85,15 +84,7 @@ public class LamaException extends AbstractTruffleException {
 
         String sep = " ";
         for (int i = 0; i < values.length; i++) {
-            /*
-             * For primitive or foreign values we request a language view so the values are printed
-             * from the perspective of simple language and not another language. Since this is a
-             * rather rarely invoked exceptional method, we can just create the language view for
-             * primitive values and then conveniently request the meta-object and display strings.
-             * Using the language view for core builtins like the typeOf builtin might not be a good
-             * idea for performance reasons.
-             */
-            Object value = SLLanguageView.forValue(values[i]);
+            Object value = values[i];
             result.append(sep);
             sep = ", ";
             if (value == null) {

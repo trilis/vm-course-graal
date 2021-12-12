@@ -43,12 +43,9 @@ package com.oracle.truffle.lama.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.lama.LamaException;
 import com.oracle.truffle.lama.runtime.LamaContext;
-import com.oracle.truffle.lama.runtime.SLLanguageView;
 
 @NodeInfo(shortName = "write")
 public abstract class LamaWriteBuiltin extends LamaBuiltinNode {

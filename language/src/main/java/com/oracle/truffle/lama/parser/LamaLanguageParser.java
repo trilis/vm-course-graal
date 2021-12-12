@@ -3,20 +3,27 @@ package com.oracle.truffle.lama.parser;
 
 // DO NOT MODIFY - generated from LamaLanguage.g4 using "generate_parser.sh"
 
+import java.util.*;
+
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.lama.LamaLanguage;
 import com.oracle.truffle.lama.nodes.LamaExpressionNode;
-import com.oracle.truffle.lama.nodes.expression.LamaLongLiteralNode;
 import com.oracle.truffle.lama.nodes.expression.LamaSkipNode;
 import static com.oracle.truffle.lama.parser.LamaLanguageParser.LamaSyntaxCategory.*;
 import com.oracle.truffle.lama.nodes.LamaRootNode;
+import com.oracle.truffle.lama.nodes.LamaStatementNode;
+import com.oracle.truffle.lama.parser.LamaParseError;
+import com.oracle.truffle.lama.nodes.expression.LamaLongLiteralNode;
 import com.oracle.truffle.lama.nodes.patterns.*;
 
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.misc.*;
 import org.antlr.v4.runtime.tree.*;
 import java.util.List;
+import java.util.Iterator;
 import java.util.ArrayList;
 
 @SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast"})
@@ -540,7 +547,7 @@ public class LamaLanguageParser extends Parser {
 			((Function_definitionContext)_localctx).name = match(LIDENT);
 			setState(101);
 			((Function_definitionContext)_localctx).br = match(T__5);
-			 factory.startBlock(); 
+			 factory.startFunction(); 
 			setState(103);
 			((Function_definitionContext)_localctx).args = function_args();
 			setState(104);
@@ -590,7 +597,7 @@ public class LamaLanguageParser extends Parser {
 			{
 			setState(110);
 			((Lambda_definitionContext)_localctx).br = match(T__5);
-			 factory.startBlock(); 
+			 factory.startFunction(); 
 			setState(112);
 			((Lambda_definitionContext)_localctx).args = function_args();
 			setState(113);
@@ -1681,7 +1688,7 @@ public class LamaLanguageParser extends Parser {
 				{
 				setState(313);
 				((PrimaryContext)_localctx).t = match(T__27);
-				 ((PrimaryContext)_localctx).result =  new LamaLongLiteralNode(1); checkCategory(cat, VAL, ((PrimaryContext)_localctx).t);
+				 ((PrimaryContext)_localctx).result =  new LamaLongLiteralNode(1); checkCategory(cat, VAL, ((PrimaryContext)_localctx).t); 
 				}
 				break;
 			case T__28:
@@ -1689,7 +1696,7 @@ public class LamaLanguageParser extends Parser {
 				{
 				setState(315);
 				((PrimaryContext)_localctx).f = match(T__28);
-				 ((PrimaryContext)_localctx).result =  new LamaLongLiteralNode(0); checkCategory(cat, VAL, ((PrimaryContext)_localctx).f);
+				 ((PrimaryContext)_localctx).result =  new LamaLongLiteralNode(0); checkCategory(cat, VAL, ((PrimaryContext)_localctx).f); 
 				}
 				break;
 			case T__5:

@@ -55,7 +55,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.lama.nodes.LamaRootNode;
 import com.oracle.truffle.lama.parser.LamaLanguageParser;
 import com.oracle.truffle.lama.runtime.LamaContext;
-import com.oracle.truffle.lama.runtime.SLLanguageView;
 
 @TruffleLanguage.Registration(id = LamaLanguage.ID, name = "LAMA", defaultMimeType = LamaLanguage.MIME_TYPE, characterMimeTypes = LamaLanguage.MIME_TYPE, contextPolicy = ContextPolicy.SHARED, fileTypeDetectors = LamaFileDetector.class)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.ExpressionTag.class, DebuggerTags.AlwaysHalt.class,
@@ -107,10 +106,6 @@ public final class LamaLanguage extends TruffleLanguage<LamaContext> {
         singleContext.invalidate();
     }
 
-    @Override
-    protected Object getLanguageView(LamaContext context, Object value) {
-        return SLLanguageView.create(value);
-    }
 
     @Override
     protected boolean isVisible(LamaContext context, Object value) {

@@ -49,6 +49,7 @@ import com.oracle.truffle.lama.builtins.*;
 import com.oracle.truffle.lama.nodes.*;
 import com.oracle.truffle.lama.nodes.controlflow.*;
 import com.oracle.truffle.lama.nodes.expression.*;
+import com.oracle.truffle.lama.nodes.local.*;
 import com.oracle.truffle.lama.nodes.local.LamaReaderHelperNodeGen;
 import com.oracle.truffle.lama.nodes.patterns.LamaArrayPatternNodeGen;
 import com.oracle.truffle.lama.nodes.patterns.LamaNamedPatternNode;
@@ -58,26 +59,29 @@ import com.oracle.truffle.lama.runtime.LamaFunction;
 import org.antlr.v4.runtime.Token;
 
 import com.oracle.truffle.lama.nodes.expression.LamaReferenceNodeGen;
-import com.oracle.truffle.lama.nodes.local.LamaReadArgumentNode;
-import com.oracle.truffle.lama.nodes.local.SLReadNodeGen;
-import com.oracle.truffle.lama.nodes.local.SLWriteNodeGen;
 
 public class LamaNodeFactory {
 
     private FrameDescriptor frameDescriptor;
 
     private LexicalScope lexicalScope;
+    private FunctionScope functionScope;
+
+    private long uid = 0;
 
     class LexicalScope {
         protected final LexicalScope outer;
         private final Map<String, FrameSlot> locals;
+        private final Map<String, Integer> levels;
         private final Set<String> promised;
 
         LexicalScope(LexicalScope outer) {
             this.outer = outer;
             this.locals = new HashMap<>();
             this.promised = new HashSet<>();
+            this.levels = new HashMap<>();
             if (outer != null) {
+                levels.putAll(outer.levels);
                 locals.putAll(outer.locals);
             }
         }
@@ -92,13 +96,22 @@ public class LamaNodeFactory {
             return slot;
         }
 
-        public void register(String name) {
-            promised.remove(name);
+        public FrameSlot register(String name, Integer argumentIndex) {
+            if (functionScope == null) {
+                levels.put(name, 0);
+            } else {
+                levels.put(name, functionScope.level);
+            }
+            if (promised.contains(name)) {
+                promised.remove(name);
+                return locals.get(name);
+            }
+            return put(name, argumentIndex);
         }
 
-        public FrameSlot put(String name, Integer argumentIndex) {
-            FrameSlot slot = frameDescriptor.findOrAddFrameSlot(
-                    name,
+        private FrameSlot put(String name, Integer argumentIndex) {
+            FrameSlot slot = frameDescriptor.addFrameSlot(
+                    uid++ + "." + name,
                     argumentIndex,
                     FrameSlotKind.Illegal);
             locals.put(name, slot);
@@ -112,6 +125,44 @@ public class LamaNodeFactory {
             for (String name : promised) {
                 outer.promised.add(name);
                 outer.locals.put(name, locals.get(name));
+            }
+        }
+
+        public boolean isExternal(String name, int currentLevel) {
+            Integer level = levels.get(name);
+            if (level == null) {
+                // promised variable, definitely external
+                return true;
+            }
+            return level < currentLevel;
+        }
+    }
+
+    class FunctionScope {
+        List<FrameSlot> externalReads = new ArrayList<>();
+        List<FrameSlot> externalWrites = new ArrayList<>();
+        FunctionScope outer;
+        int level;
+
+        public void registerRead(String name, FrameSlot slot) {
+            if (lexicalScope.isExternal(name, level)) {
+                externalReads.add(slot);
+            }
+        }
+
+        public void registerWrite(String name, FrameSlot slot) {
+            if (lexicalScope.isExternal(name, level)) {
+                externalReads.add(slot);
+                externalWrites.add(slot);
+            }
+        }
+
+        public FunctionScope(FunctionScope outer) {
+            this.outer = outer;
+            if (outer != null) {
+                this.level = outer.level + 1;
+            } else {
+                this.level = 1;
             }
         }
     }
@@ -150,7 +201,7 @@ public class LamaNodeFactory {
         return new LamaRootNode(methodBlock, frameDescriptor);
     }
 
-    public LamaExpressionNode createLambda(List<LamaPatternNode> argPatterns, LamaExpressionNode bodyNode, Token functionBodyStartToken) {
+    public LamaExpressionNode createFunctionBody(List<LamaPatternNode> argPatterns, LamaExpressionNode bodyNode, Token functionBodyStartToken) {
         List<LamaExpressionNode> methodNodes = new ArrayList<>();
         Collections.reverse(argPatterns);
         int parameterCount = 0;
@@ -161,15 +212,26 @@ public class LamaNodeFactory {
             parameterCount++;
         }
 
-        methodNodes.add(bodyNode);
+
+        if (!functionScope.externalWrites.isEmpty()) {
+            methodNodes.add(new LamaPromoteExternalWritesNode(functionScope.externalWrites.toArray(new FrameSlot[0]), bodyNode));
+        } else {
+            methodNodes.add(bodyNode);
+        }
 
         final int bodyEndPos = bodyNode.getSourceEndIndex();
         int functionBodyStartPos = functionBodyStartToken.getStartIndex();
-        final LamaExpressionNode methodBlock = finishBlock(methodNodes, parameterCount, functionBodyStartPos, bodyEndPos - functionBodyStartPos, true);
-        return LamaFunctionNodeGen.create(
+        return finishBlock(methodNodes, parameterCount, functionBodyStartPos, bodyEndPos - functionBodyStartPos, true);
+    }
+
+    public LamaExpressionNode createLambda(List<LamaPatternNode> argPatterns, LamaExpressionNode bodyNode, Token functionBodyStartToken) {
+        final LamaExpressionNode methodBlock = createFunctionBody(argPatterns, bodyNode, functionBodyStartToken);
+        FrameSlot[] externalReads = functionScope.externalReads.toArray(new FrameSlot[0]);
+        functionScope = functionScope.outer;
+        return LamaLambdaNodeGen.create(
                 new LamaFunction(Truffle.getRuntime().createCallTarget(
                         new LamaRootNode(methodBlock, frameDescriptor)
-                ))
+                ), externalReads)
         );
     }
 
@@ -178,22 +240,33 @@ public class LamaNodeFactory {
         LamaReadArgumentNode readArg = new LamaReadArgumentNode(0);
         methodNodes.add(new LamaInvokeNode(bodyNode, new LamaExpressionNode[]{readArg}));
         final LamaExpressionNode methodBlock = finishBlock(methodNodes, 1, -1, 0, false);
-        return LamaFunctionNodeGen.create(
+        return LamaLambdaNodeGen.create(
                 new LamaFunction(Truffle.getRuntime().createCallTarget(
                         new LamaRootNode(methodBlock, frameDescriptor)
-                ))
+                ), new FrameSlot[0])
         );
     }
 
     public LamaExpressionNode createFunction(String name, List<LamaPatternNode> argPatterns, LamaExpressionNode bodyNode, Token functionBodyStartToken) {
-        LamaExpressionNode lambda = createLambda(argPatterns, bodyNode, functionBodyStartToken);
-        lexicalScope.register(name);
-        lexicalScope.put(name, null);
+        final LamaExpressionNode methodBlock = createFunctionBody(argPatterns, bodyNode, functionBodyStartToken);
+        FrameSlot[] externalReads = functionScope.externalReads.toArray(new FrameSlot[0]);
+        functionScope = functionScope.outer;
+        LamaExpressionNode function = LamaFunctionNodeGen.create(
+                new LamaFunction(Truffle.getRuntime().createCallTarget(
+                        new LamaRootNode(methodBlock, frameDescriptor)
+                ), externalReads)
+        );
+        lexicalScope.register(name, null);
 
         return createAssignment(
                 new LamaStringLiteralNode(new StringBuffer(name)),
-                lambda
+                function
         );
+    }
+
+    public void startFunction() {
+        functionScope = new FunctionScope(functionScope);
+        startBlock();
     }
 
     public void startBlock() {
@@ -383,8 +456,7 @@ public class LamaNodeFactory {
     }
 
     public void registerVariable(String name) {
-        lexicalScope.register(name);
-        lexicalScope.put(name, null);
+        lexicalScope.register(name, null);
     }
 
     public LamaExpressionNode createAssignment(LamaExpressionNode nameNode, LamaExpressionNode valueNode, Integer argumentIndex) {
@@ -392,7 +464,7 @@ public class LamaNodeFactory {
             return null;
         }
 
-        final LamaExpressionNode result = SLWriteNodeGen.create(createReference(nameNode), valueNode);
+        final LamaExpressionNode result = LamaWriteNodeGen.create(createReference(nameNode), valueNode);
 
         if (valueNode.hasSource()) {
             final int start = nameNode.getSourceCharIndex();
@@ -413,7 +485,10 @@ public class LamaNodeFactory {
         String name = ((LamaStringLiteralNode) nameNode).executeGeneric(null).toString();
         final LamaExpressionNode result;
         final FrameSlot frameSlot = lexicalScope.get(name);
-        result = SLReadNodeGen.create(frameSlot);
+        if (functionScope != null) {
+            functionScope.registerRead(name, frameSlot);
+        }
+        result = LamaReadNodeGen.create(false, frameSlot);
         result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
         result.addExpressionTag();
         return result;
@@ -427,6 +502,9 @@ public class LamaNodeFactory {
         String name = ((LamaStringLiteralNode) nameNode).executeGeneric(null).toString();
         final LamaExpressionNode result;
         final FrameSlot frameSlot = lexicalScope.get(name);
+        if (functionScope != null) {
+            functionScope.registerWrite(name, frameSlot);
+        }
         result = LamaReferenceNodeGen.create(frameSlot);
         result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
         result.addExpressionTag();
@@ -438,7 +516,7 @@ public class LamaNodeFactory {
     }
 
     public LamaExpressionNode createElemRef(LamaExpressionNode objectNode, LamaExpressionNode indexNode) {
-        return LamaElemRefNodeGen.create(objectNode, LamaReaderHelperNodeGen.create(), indexNode);
+        return LamaElemRefNodeGen.create(objectNode, LamaReaderHelperNodeGen.create(false), indexNode);
     }
 
     public long parseChar(Token charToken) {
@@ -492,7 +570,7 @@ public class LamaNodeFactory {
             return null;
         }
 
-        final LamaExpressionNode result = SLWriteNodeGen.create(receiverNode, valueNode);
+        final LamaExpressionNode result = LamaWriteNodeGen.create(receiverNode, valueNode);
 
         final int start = receiverNode.getSourceCharIndex();
         final int length = valueNode.getSourceEndIndex() - start;
@@ -530,12 +608,12 @@ public class LamaNodeFactory {
     }
 
     public LamaExpressionNode createCase(LamaExpressionNode scrutinee, List<LamaPatternNode> patterns, List<LamaExpressionNode> branches) {
-        return new LamaCaseNode(scrutinee, patterns.toArray(new LamaPatternNode[0]), branches.toArray(new LamaExpressionNode[0]));
+        int maximumBindingsSize = patterns.stream().map(LamaPatternNode::getBindingsSize).max(Integer::compareTo).orElse(0);
+        return new LamaCaseNode(scrutinee, patterns.toArray(new LamaPatternNode[0]), branches.toArray(new LamaExpressionNode[0]), maximumBindingsSize);
     }
 
     public LamaPatternNode createNamedPattern(String name, LamaPatternNode pattern) {
-        lexicalScope.register(name);
-        FrameSlot frameSlot = lexicalScope.put(name, null);
+        FrameSlot frameSlot = lexicalScope.register(name, null);
         return new LamaNamedPatternNode(frameSlot, pattern);
     }
 

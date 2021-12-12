@@ -47,7 +47,8 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.lama.runtime.*;
 
 @TypeSystem({long.class, LamaSexp.class, StringBuffer.class, LamaArray.class,
-        FrameSlot.class, LamaArrayRef.class, LamaStringRef.class, LamaNull.class, LamaFunction.class})
+        FrameSlot.class, LamaArrayRef.class, LamaStringRef.class, LamaNull.class,
+        LamaFunction.class, LamaInitializedFunction.class})
 public abstract class LamaTypes {
 
     @TypeCheck(LamaNull.class)

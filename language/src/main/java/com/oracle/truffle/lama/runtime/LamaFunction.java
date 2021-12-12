@@ -41,27 +41,35 @@
 package com.oracle.truffle.lama.runtime;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.lama.nodes.LamaExpressionNode;
-import com.oracle.truffle.lama.nodes.LamaRootNode;
+import com.oracle.truffle.lama.nodes.local.*;
 
 public final class LamaFunction implements TruffleObject {
     public final RootCallTarget callTarget;
-    private MaterializedFrame lexicalScope;
+    private final LamaExpressionNode[] readNodes;
+    private final LamaWriteLocalNode[] writeNodes;
+    private final FrameSlot[] slots;
 
-    public LamaFunction(RootCallTarget callTarget) {
+    public LamaFunction(RootCallTarget callTarget, FrameSlot[] externalReads) {
         this.callTarget = callTarget;
+        this.slots = externalReads;
+        this.readNodes = new LamaExpressionNode[externalReads.length];
+        this.writeNodes = new LamaWriteLocalNode[externalReads.length];
+        for (int i = 0; i < externalReads.length; i++) {
+            this.readNodes[i] = LamaReadNodeGen.create(true, externalReads[i]);
+            this.writeNodes[i] = LamaWriteLocalNodeGen.create();
+        }
     }
 
-    public MaterializedFrame getLexicalScope() {
-        return this.lexicalScope;
-    }
-
-    public void setLexicalScope(MaterializedFrame lexicalScope) {
-        this.lexicalScope = lexicalScope;
+    public LamaInitializedFunction initialize(VirtualFrame oldFrame) {
+        return new LamaInitializedFunction(
+                callTarget,
+                readNodes,
+                writeNodes,
+                slots,
+                oldFrame
+        );
     }
 }

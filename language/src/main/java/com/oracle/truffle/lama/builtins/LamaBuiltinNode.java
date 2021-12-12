@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.lama.LamaException;
@@ -89,6 +90,6 @@ public abstract class LamaBuiltinNode extends LamaExpressionNode {
         }
         LamaBuiltinNode node = factory.createNode((Object) argumentNodes);
         return new LamaFunction(Truffle.getRuntime().createCallTarget(
-                new LamaRootNode(node, frameDescriptor)));
+                new LamaRootNode(node, frameDescriptor)), new FrameSlot[0]);
     }
 }

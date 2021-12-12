@@ -94,7 +94,7 @@ private static void throwParseError(Source source, int line, int charPositionInL
     int col = charPositionInLine + 1;
     String location = "-- line " + line + " col " + col + ": ";
     int length = token == null ? 1 : Math.max(token.getStopIndex() - token.getStartIndex(), 0);
-    throw new SLParseError(source, line, col, length, String.format("Error(s) parsing script:%n" + location + message));
+    throw new LamaParseError(source, line, col, length, String.format("Error(s) parsing script:%n" + location + message));
 }
 
 public static LamaRootNode parseLama(LamaLanguage language, Source source) {
@@ -178,7 +178,7 @@ v=LIDENT { factory.registerVariable($v.getText()); } (
 function_definition returns [LamaExpressionNode result]
 :
 'fun' name=LIDENT br='('
-{ factory.startBlock(); } args=function_args ')' '{'
+{ factory.startFunction(); } args=function_args ')' '{'
 body=scope_expression[VOID, true]
 '}' { $result = factory.createFunction($name.getText(), $args.result, $body.result, $br); }
 ;
@@ -186,7 +186,7 @@ body=scope_expression[VOID, true]
 lambda_definition returns [LamaExpressionNode result]
 :
 br='('
-{ factory.startBlock(); } args=function_args ')' '{'
+{ factory.startFunction(); } args=function_args ')' '{'
 body=scope_expression[VOID, true]
 '}' { $result = factory.createLambda($args.result, $body.result, $br); }
 ;
@@ -343,9 +343,9 @@ LIDENT { if (cat == VAL || cat == VOID) {
           $result = factory.createReference(factory.createStringLiteral($LIDENT, false));
          } }
 |
-t='true' { $result = new SLLongLiteralNode(1); checkCategory(cat, VAL, $t); }
+t='true' { $result = new LamaLongLiteralNode(1); checkCategory(cat, VAL, $t); }
 |
-f='false' { $result = new SLLongLiteralNode(0); checkCategory(cat, VAL, $f); }
+f='false' { $result = new LamaLongLiteralNode(0); checkCategory(cat, VAL, $f); }
 |
 '(' e=scope_expression[cat, true] ')' { $result = $e.result; }
 |
@@ -391,7 +391,7 @@ c='{' { List<LamaExpressionNode> args = new ArrayList<>(); }
 ( ex=expression[VAL] { args.add($ex.result); }
 ( ',' ex=expression[VAL] { args.add($ex.result); }
 )*
-)? '}' { $result = factory.createList(new SLLongLiteralNode(0), args);
+)? '}' { $result = factory.createList(new LamaLongLiteralNode(0), args);
          checkCategory(cat, VAL, $c); }
 |
 c='[' { List<LamaExpressionNode> args = new ArrayList<>(); }
